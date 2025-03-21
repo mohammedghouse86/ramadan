@@ -3,10 +3,12 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const { authenticateToken, SECRET } = require('./auth');
 const { ramadan } = require('./data');
+const cors = require('cors');
+
 
 const app = express();
 app.use(express.json());
-
+app.use(cors());
 // 🔐 Mock login for token
 app.post('/login', (req, res) => {
   const { username } = req.body;
