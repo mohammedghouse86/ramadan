@@ -10,13 +10,24 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 // 🔐 Mock login for token
+// app.post('/login', (req, res) => {
+//   const { username } = req.body;
+//   const user = { name: username || 'guest' };
+//   const token = jwt.sign(user, SECRET, { expiresIn: '1h' });
+//   res.json({ token });
+// });
+// app.js
 app.post('/login', (req, res) => {
   const { username } = req.body;
   const user = { name: username || 'guest' };
-  const token = jwt.sign(user, SECRET, { expiresIn: '1h' });
+
+  const token = jwt.sign(user, SECRET, {
+    expiresIn: '1h',
+    issuer: 'myapi.example.com' // <-- Add issuer here
+  });
+
   res.json({ token });
 });
-
 // 📖 General info
 app.get('/ramadan', authenticateToken, (req, res) => {
   res.json({
