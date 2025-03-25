@@ -59,6 +59,20 @@ app.get('/ramadan/fasting', authenticateToken, (req, res) => {
   });
 });
 
+// 🌇 Info about Iftar
+app.get('/ramadan/iftar', authenticateToken, (req, res) => {
+  res.json({
+    iftar: ramadan.iftar,
+  });
+});
+
+// 🌄 Info about Suhoor
+app.get('/ramadan/suhoor', authenticateToken, (req, res) => {
+  res.json({
+    suhoor: ramadan.suhoor,
+  });
+});
+
 const PORT = 3000;
 app.listen(PORT, () => {
   console.log(`✅ Server running at http://localhost:${PORT}`);
