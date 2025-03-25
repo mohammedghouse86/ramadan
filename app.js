@@ -73,6 +73,13 @@ app.get('/ramadan/suhoor', authenticateToken, (req, res) => {
   });
 });
 
+// 🕌 Info about Taraweeh prayers
+app.get('/ramadan/prayers', authenticateToken, (req, res) => {
+  res.json({
+    prayers: ramadan.prayers,
+  });
+});
+
 const PORT = 3000;
 app.listen(PORT, () => {
   console.log(`✅ Server running at http://localhost:${PORT}`);
