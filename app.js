@@ -80,6 +80,20 @@ app.get('/ramadan/prayers', authenticateToken, (req, res) => {
   });
 });
 
+// 💡 Tips for Ramadan
+app.get('/ramadan/tips', authenticateToken, (req, res) => {
+  res.json({
+    tips: ramadan.tips,
+  });
+});
+
+// 💰 Zakat info
+app.get('/ramadan/zakat', authenticateToken, (req, res) => {
+  res.json({
+    zakat: ramadan.zakat,
+  });
+});
+
 const PORT = 3000;
 app.listen(PORT, () => {
   console.log(`✅ Server running at http://localhost:${PORT}`);

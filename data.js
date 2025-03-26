@@ -18,6 +18,15 @@ const ramadan = {
     "Suhoor is the pre-dawn meal before the fast begins. It is recommended to eat something nourishing before Fajr (dawn) prayer.",
   prayers:
     "Taraweeh prayers are special night prayers performed during Ramadan after the Isha prayer. They are highly recommended and often performed in congregation.",
+  tips: [
+      "Stay hydrated during non-fasting hours",
+      "Eat a balanced Suhoor and Iftar",
+      "Avoid over-eating",
+      "Get enough rest",
+    ],
+  zakat:
+      "Zakat is a form of almsgiving treated in Islam as a religious obligation. During Ramadan, many Muslims choose to give Zakat to maximize rewards.",
+    
 };
 
 module.exports = { ramadan };
