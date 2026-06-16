@@ -52,7 +52,7 @@ app.get('/ramadan/benefits', authenticateToken, (req, res) => {
   });
 });
 
-// 🌅 Info about fasting
+// 🌅 Info about fast
 app.get('/ramadan/fasting', authenticateToken, (req, res) => {
   res.json({
     fasting: ramadan.fasting,
