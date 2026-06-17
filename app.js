@@ -100,7 +100,8 @@ app.get('/ramadan/prayers', authenticateToken, (req, res) => {
 });
 
 // 💡 Tips for Ramadan
-app.get('/ramadan/tips', authenticateToken, (req, res) => {
+// app.get('/ramadan/tips', authenticateToken, (req, res) => {
+  app.get('/ramadan/tips',  (req, res) => {
   res.json({
     tips: ramadan.tips,
   });
