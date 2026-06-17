@@ -1,7 +1,8 @@
 // app.js
 const express = require('express');
 const jwt = require('jsonwebtoken');
-const { authenticateToken, SECRET } = require('./auth');
+const rateLimit = require('express-rate-limit');
+const { authenticateToken, SECRET, revokeToken } = require('./auth');
 const { ramadan } = require('./data');
 const cors = require('cors');
 
@@ -9,6 +10,24 @@ const cors = require('cors');
 const app = express();
 app.use(express.json());
 app.use(cors());
+
+const globalLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests, please try again later.' },
+});
+
+const authLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many login attempts, please try again later.' },
+});
+
+app.use(globalLimiter);
 // 🔐 Mock login for token
 // app.post('/login', (req, res) => {
 //   const { username } = req.body;
@@ -17,7 +36,7 @@ app.use(cors());
 //   res.json({ token });
 // });
 // app.js
-app.post('/login', (req, res) => {
+app.post('/login', authLimiter, (req, res) => {
   const { username } = req.body;
   const user = { name: username || 'guest' };
 
@@ -135,6 +154,11 @@ app.post('/ramadan/iftar_time', authenticateToken, (req, res) => {
   } else {
     res.status(400).json({ message: '❌ Iftar time for the given city is not available.' });
   }
+});
+
+app.post('/users/revokeToken', authenticateToken, (req, res) => {
+  revokeToken(req.token);
+  res.json({ message: 'Token has been revoked successfully.' });
 });
 
 const PORT = 3000;
