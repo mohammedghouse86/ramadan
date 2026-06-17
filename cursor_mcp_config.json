@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "perfai-mcp": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "C:\\Users\\User\\AppData\\Roaming\\npm\\node_modules\\perfai-mcp-server\\dist\\server.js"
+      ],
+      "env": {
+        "PERFAI_USERNAME": "support@perfai.ai",
+        "PERFAI_PASSWORD": "Ghou$e_Tester@786"
+      }
+    }
+  }
+}
