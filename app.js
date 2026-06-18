@@ -2,15 +2,33 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const rateLimit = require('express-rate-limit');
-const { authenticateToken, SECRET, revokeToken } = require('./auth');
-const { ramadan } = require('./data');
 const cors = require('cors');
 
+const {
+  authenticateToken,
+  requireAdmin,
+  SECRET,
+  revokeToken,
+} = require('./auth');
+
+const {
+  ramadan,
+  getTenant,
+  findUserByName,
+  findUserById,
+  listUsersByTenant,
+  createUser,
+  deleteUser,
+  publicUser,
+  addAuditEntry,
+  listAuditByTenant,
+} = require('./data');
 
 const app = express();
 app.use(express.json());
 app.use(cors());
 
+// ===== Rate limiters =======================================================
 const globalLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 100,
@@ -28,34 +46,86 @@ const authLimiter = rateLimit({
 });
 
 app.use(globalLimiter);
-// 🔐 Mock login for token
-// app.post('/login', (req, res) => {
-//   const { username } = req.body;
-//   const user = { name: username || 'guest' };
-//   const token = jwt.sign(user, SECRET, { expiresIn: '1h' });
-//   res.json({ token });
-// });
-// app.js
+
+// ===== Helpers =============================================================
+// Validates that an :id route param is a pure integer (no alphanumerics).
+function parseIntegerId(value) {
+  if (!/^\d+$/.test(String(value))) return null;
+  return parseInt(value, 10);
+}
+
+// ===========================================================================
+//  AUTH — name-only, multi-tenant login
+// ===========================================================================
+// POST /login  { name: "admin1" }            -> logs in seeded user
+// POST /login  { name: "newperson" }         -> auto-creates a user in tenant 1
+// POST /login  { name: "newperson", tenantId: 2 } -> auto-create in tenant 2
 app.post('/login', authLimiter, (req, res) => {
-  const { username } = req.body;
-  const user = { name: username || 'guest' };
+  const { name, tenantId } = req.body;
 
-  const token = jwt.sign(user, SECRET, {
-    expiresIn: '1h',
-    issuer: 'myapi.example.com' // <-- Add issuer here
+  if (!name || !String(name).trim()) {
+    return res.status(400).json({ error: 'A name is required to log in.' });
+  }
+
+  let user = findUserByName(name);
+
+  // Unknown name -> create a regular user on the fly (no password needed).
+  if (!user) {
+    let tid = 1;
+    if (tenantId !== undefined) {
+      const parsed = parseIntegerId(tenantId);
+      if (parsed === null || !getTenant(parsed)) {
+        return res.status(400).json({ error: 'Invalid tenantId.' });
+      }
+      tid = parsed;
+    }
+    user = createUser({ name: String(name).trim(), role: 'user', tenantId: tid });
+  }
+
+  const token = jwt.sign(
+    { id: user.id, name: user.name, role: user.role, tenantId: user.tenantId },
+    SECRET,
+    { expiresIn: '1h', issuer: 'myapi.example.com' }
+  );
+
+  addAuditEntry({
+    tenantId: user.tenantId,
+    actorId: user.id,
+    actorName: user.name,
+    action: 'login',
   });
 
-  res.json({ token });
-});
-// 📖 General info
-app.get('/ramadan', authenticateToken, (req, res) => {
   res.json({
-    month: ramadan.month,
-    description: ramadan.description,
+    token,
+    user: publicUser(user),
+    tenant: getTenant(user.tenantId)?.name,
   });
 });
 
-// 📅 Which month is Ramadan?
+// ===========================================================================
+//  SELF / PII
+// ===========================================================================
+// Your own full profile, including your PII.
+app.get('/me', authenticateToken, (req, res) => {
+  const me = findUserById(req.user.id);
+  if (!me) return res.status(404).json({ error: 'User no longer exists.' });
+  res.json({
+    id: me.id,
+    name: me.name,
+    role: me.role,
+    tenantId: me.tenantId,
+    tenant: getTenant(me.tenantId)?.name,
+    pii: me.pii, // 🔒 PII: returned only for yourself
+  });
+});
+
+// ===========================================================================
+//  RAMADAN INFO (authenticated, tenant-scoped where relevant)
+// ===========================================================================
+app.get('/ramadan', authenticateToken, (req, res) => {
+  res.json({ month: ramadan.month, description: ramadan.description });
+});
+
 app.get('/ramadan/month', authenticateToken, (req, res) => {
   res.json({
     name: ramadan.month,
@@ -64,69 +134,42 @@ app.get('/ramadan/month', authenticateToken, (req, res) => {
   });
 });
 
-// 🌟 Benefits of Ramadan
 app.get('/ramadan/benefits', authenticateToken, (req, res) => {
-  res.json({
-    benefits: ramadan.benefits,
-  });
+  res.json({ benefits: ramadan.benefits });
 });
 
-// 🌅 Info about fast
 app.get('/ramadan/fasting', authenticateToken, (req, res) => {
-  res.json({
-    fasting: ramadan.fasting,
-  });
+  res.json({ fasting: ramadan.fasting });
 });
 
-// 🌇 Info about Iftar
 app.get('/ramadan/iftar', authenticateToken, (req, res) => {
-  res.json({
-    iftar: ramadan.iftar,
-  });
+  res.json({ iftar: ramadan.iftar });
 });
 
-// 🌄 Info about Suhoor
 app.get('/ramadan/suhoor', authenticateToken, (req, res) => {
-  res.json({
-    suhoor: ramadan.suhoor,
-  });
+  res.json({ suhoor: ramadan.suhoor });
 });
 
-// 🕌 Info about Taraweeh prayers
 app.get('/ramadan/prayers', authenticateToken, (req, res) => {
-  res.json({
-    prayers: ramadan.prayers,
-  });
+  res.json({ prayers: ramadan.prayers });
 });
 
-// 💡 Tips for Ramadan
-// app.get('/ramadan/tips', authenticateToken, (req, res) => {
-  app.get('/ramadan/tips',  (req, res) => {
-  res.json({
-    tips: ramadan.tips,
-  });
+// Was previously unauthenticated — now requires a token like the rest.
+app.get('/ramadan/tips', authenticateToken, (req, res) => {
+  res.json({ tips: ramadan.tips });
 });
 
-// 💰 Zakat info
 app.get('/ramadan/zakat', authenticateToken, (req, res) => {
-  res.json({
-    zakat: ramadan.zakat,
-  });
+  res.json({ zakat: ramadan.zakat });
 });
 
-// 💰 Zakat info
-app.get('/ramadan/admin', authenticateToken, (req, res) => {
-  res.json({
-    admin: ramadan.admin,
-  });
-});
-
+// ===== Ramadan utility POST endpoints ======================================
 app.post('/ramadan/night_of_power', authenticateToken, (req, res) => {
   const { day } = req.body;
   if (day === 27) {
     res.json({ message: `✅ Yes, ${day} is the Night of Power.` });
   } else {
-    res.status(400).json({ message: `❌ No, the given day is not the Night of Power.` });
+    res.status(400).json({ message: '❌ No, the given day is not the Night of Power.' });
   }
 });
 
@@ -135,35 +178,130 @@ app.post('/ramadan/fast_required', authenticateToken, (req, res) => {
   if (day >= 1 && day <= 29) {
     res.json({ message: `✅ Yes, fasting is required on day ${day} of Ramadan.` });
   } else {
-    res.status(400).json({ message: `❌ No, fasting is not required on this day.` });
+    res.status(400).json({ message: '❌ No, fasting is not required on this day.' });
   }
 });
 
+// Uses the caller's tenant nisab threshold.
 app.post('/ramadan/zakat_due', authenticateToken, (req, res) => {
   const { wealth } = req.body;
-  if (wealth >= 3960) {
-    res.json({ message: '✅ Yes, zakat is due on this amount.' });
+  const tenant = getTenant(req.user.tenantId);
+  const nisab = tenant?.zakatNisab ?? 3960;
+  if (wealth >= nisab) {
+    res.json({ message: `✅ Yes, zakat is due (nisab for ${tenant?.name} is ${nisab}).` });
   } else {
-    res.status(400).json({ message: '❌ No, zakat is not due on this amount.' });
+    res.status(400).json({ message: `❌ No, zakat is not due (nisab is ${nisab}).` });
   }
 });
 
+// Iftar times are tenant-specific: tenant 1 and tenant 2 have different cities.
 app.post('/ramadan/iftar_time', authenticateToken, (req, res) => {
   const { city } = req.body;
-  const times = {
-    Mecca: '6:45 PM',
-    Medina: '6:40 PM',
-    Cairo: '6:30 PM',
-    Hyderabad: '6:43 PM',
-  };
+  const tenant = getTenant(req.user.tenantId);
+  const times = tenant?.iftarTimes || {};
 
   if (times[city]) {
     res.json({ message: `🕓 Iftar time in ${city} is ${times[city]}.` });
   } else {
-    res.status(400).json({ message: '❌ Iftar time for the given city is not available.' });
+    res.status(400).json({
+      error: `Iftar time for "${city}" is not available for ${tenant?.name}.`,
+      availableCities: Object.keys(times),
+    });
   }
 });
 
+// ===========================================================================
+//  ADMIN-ONLY ENDPOINTS (role === 'admin', scoped to the admin's tenant)
+// ===========================================================================
+
+// List all users in your tenant — INCLUDING their PII.
+app.get('/admin/users', authenticateToken, requireAdmin, (req, res) => {
+  const members = listUsersByTenant(req.user.tenantId);
+  res.json({
+    tenant: getTenant(req.user.tenantId)?.name,
+    count: members.length,
+    users: members, // 🔒 full records with PII (admin only)
+  });
+});
+
+// Fetch one user by integer id (must be in your tenant). PII included.
+app.get('/admin/users/:id', authenticateToken, requireAdmin, (req, res) => {
+  const id = parseIntegerId(req.params.id);
+  if (id === null) {
+    return res.status(400).json({ error: 'User id must be an integer.' });
+  }
+  const user = findUserById(id);
+  if (!user || user.tenantId !== req.user.tenantId) {
+    return res.status(404).json({ error: 'User not found in your tenant.' });
+  }
+  res.json(user); // 🔒 PII included
+});
+
+// Create a user in your tenant (with optional PII). Integer id auto-assigned.
+app.post('/admin/users', authenticateToken, requireAdmin, (req, res) => {
+  const { name, role, pii } = req.body;
+  if (!name || !String(name).trim()) {
+    return res.status(400).json({ error: 'name is required.' });
+  }
+  if (findUserByName(name)) {
+    return res.status(409).json({ error: 'A user with that name already exists.' });
+  }
+  const user = createUser({
+    name: String(name).trim(),
+    role: role === 'admin' ? 'admin' : 'user',
+    tenantId: req.user.tenantId,
+    pii: pii || {},
+  });
+  addAuditEntry({
+    tenantId: req.user.tenantId,
+    actorId: req.user.id,
+    actorName: req.user.name,
+    action: `create_user:${user.id}`,
+  });
+  res.status(201).json(user);
+});
+
+// Delete a user in your tenant by integer id.
+app.delete('/admin/users/:id', authenticateToken, requireAdmin, (req, res) => {
+  const id = parseIntegerId(req.params.id);
+  if (id === null) {
+    return res.status(400).json({ error: 'User id must be an integer.' });
+  }
+  const user = findUserById(id);
+  if (!user || user.tenantId !== req.user.tenantId) {
+    return res.status(404).json({ error: 'User not found in your tenant.' });
+  }
+  if (user.id === req.user.id) {
+    return res.status(400).json({ error: 'You cannot delete your own account.' });
+  }
+  deleteUser(id);
+  addAuditEntry({
+    tenantId: req.user.tenantId,
+    actorId: req.user.id,
+    actorName: req.user.name,
+    action: `delete_user:${id}`,
+  });
+  res.json({ message: `🗑️ User ${id} deleted.` });
+});
+
+// View your tenant's sensitive config (apiKey, contact, nisab, etc.).
+app.get('/admin/tenant', authenticateToken, requireAdmin, (req, res) => {
+  const tenant = getTenant(req.user.tenantId);
+  if (!tenant) return res.status(404).json({ error: 'Tenant not found.' });
+  res.json(tenant); // 🔒 includes apiKey + contactEmail (admin only)
+});
+
+// Tenant-scoped audit log (logins, user create/delete).
+app.get('/admin/audit', authenticateToken, requireAdmin, (req, res) => {
+  res.json({
+    tenant: getTenant(req.user.tenantId)?.name,
+    entries: listAuditByTenant(req.user.tenantId),
+  });
+});
+
+// ===========================================================================
+//  TOKEN MANAGEMENT
+// ===========================================================================
 app.post('/users/revokeToken', authenticateToken, (req, res) => {
   revokeToken(req.token);
   res.json({ message: 'Token has been revoked successfully.' });
