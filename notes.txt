@@ -1,1 +1,1 @@
-claude mcp add perfai-mcp --scope user -e PERFAI_USERNAME=support@perfai.ai -e PERFAI_PASSWORD=Ghou$e_Tester@786 -- npx -y @perfai/mcp@latest
+
