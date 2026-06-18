@@ -26,7 +26,10 @@ const ramadan = {
     ],
   zakat:
       "Zakat is a form of almsgiving treated in Islam as a religious obligation. During Ramadan, many Muslims choose to give Zakat to maximize rewards.",
-    
+  admin: {
+    username: "admin",
+    password: "password123",
+  },  
 };
 
 module.exports = { ramadan };

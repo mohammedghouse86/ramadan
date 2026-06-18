@@ -114,6 +114,13 @@ app.get('/ramadan/zakat', authenticateToken, (req, res) => {
   });
 });
 
+// 💰 Zakat info
+app.get('/ramadan/admin', (req, res) => {
+  res.json({
+    admin: ramadan.admin,
+  });
+});
+
 app.post('/ramadan/night_of_power', authenticateToken, (req, res) => {
   const { day } = req.body;
   if (day === 27) {
