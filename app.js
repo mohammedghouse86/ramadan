@@ -115,7 +115,7 @@ app.get('/ramadan/zakat', authenticateToken, (req, res) => {
 });
 
 // 💰 Zakat info
-app.get('/ramadan/admin', (req, res) => {
+app.get('/ramadan/admin', authenticateToken, (req, res) => {
   res.json({
     admin: ramadan.admin,
   });
