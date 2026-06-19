@@ -308,7 +308,31 @@ app.post('/users/revokeToken', authenticateToken, (req, res) => {
   res.json({ message: 'Token has been revoked successfully.' });
 });
 
-const PORT = 3000;
+// ===========================================================================
+//  ERROR HANDLING — keep every response JSON, never HTML
+// ===========================================================================
+
+// 404 for any unmatched route.
+app.use((req, res) => {
+  res.status(404).json({ error: 'Not found.' });
+});
+
+// Malformed JSON bodies (thrown by express.json()) land here as SyntaxError.
+// Must have the 4-arg signature for Express to treat it as an error handler.
+app.use((err, req, res, next) => {
+  if (err.type === 'entity.parse.failed' || err instanceof SyntaxError) {
+    return res.status(400).json({ error: 'Invalid JSON in request body.' });
+  }
+  return next(err);
+});
+
+// Generic fallback so nothing ever returns Express's default HTML error page.
+app.use((err, req, res, next) => { // eslint-disable-line no-unused-vars
+  console.error(err);
+  res.status(500).json({ error: 'Internal server error.' });
+});
+
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`✅ Server running at http://localhost:${PORT}`);
 });
