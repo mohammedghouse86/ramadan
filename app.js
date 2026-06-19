@@ -219,7 +219,9 @@ app.post('/ramadan/iftar_time', authenticateToken, (req, res) => {
 // ===========================================================================
 
 // List all users in your tenant — INCLUDING their PII.
-app.get('/admin/users', authenticateToken, requireAdmin, (req, res) => {
+// app.get('/admin/users', authenticateToken, requireAdmin, (req, res) => {
+  app.get('/admin/users', authenticateToken,  (req, res) => {
+
   const members = listUsersByTenant(req.user.tenantId);
   res.json({
     tenant: getTenant(req.user.tenantId)?.name,
@@ -229,7 +231,8 @@ app.get('/admin/users', authenticateToken, requireAdmin, (req, res) => {
 });
 
 // Fetch one user by integer id (must be in your tenant). PII included.
-app.get('/admin/users/:id', authenticateToken, requireAdmin, (req, res) => {
+// app.get('/admin/users/:id', authenticateToken, requireAdmin, (req, res) => {
+  app.get('/admin/users/:id', authenticateToken,  (req, res) => {
   // const id = parseIntegerId(req.params.id);
   const id = 1;
   if (id === null) {
