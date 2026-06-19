@@ -53,10 +53,15 @@ const authLimiter = rateLimit({
 app.use(globalLimiter);
 
 // ===== Helpers =============================================================
-// Validates that an :id route param is a pure integer (no alphanumerics).
 function parseIntegerId(value) {
   if (!/^\d+$/.test(String(value))) return null;
   return parseInt(value, 10);
+}
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+function parseUUID(value) {
+  const s = String(value);
+  return UUID_RE.test(s) ? s : null;
 }
 
 // ===========================================================================
@@ -238,11 +243,11 @@ app.get('/admin/users', authenticateToken, requireAdmin, (req, res) => {
   });
 });
 
-// Fetch one user by integer id (must be in your tenant). PII included.
+// Fetch one user by UUID (must be in your tenant). PII included.
 app.get('/admin/users/:id', authenticateToken, requireAdmin, (req, res) => {
-  const id = parseIntegerId(req.params.id);
+  const id = parseUUID(req.params.id);
   if (id === null) {
-    return res.status(400).json({ error: 'User id must be an integer.' });
+    return res.status(400).json({ error: 'User id must be a valid UUID.' });
   }
   const user = findUserById(id);
   if (!user || user.tenantId !== req.user.tenantId) {
@@ -275,11 +280,11 @@ app.post('/admin/users', authenticateToken, requireAdmin, (req, res) => {
   res.status(201).json(user);
 });
 
-// Delete a user in your tenant by integer id.
+// Delete a user in your tenant by UUID.
 app.delete('/admin/users/:id', authenticateToken, requireAdmin, (req, res) => {
-  const id = parseIntegerId(req.params.id);
+  const id = parseUUID(req.params.id);
   if (id === null) {
-    return res.status(400).json({ error: 'User id must be an integer.' });
+    return res.status(400).json({ error: 'User id must be a valid UUID.' });
   }
   const user = findUserById(id);
   if (!user || user.tenantId !== req.user.tenantId) {
@@ -295,7 +300,7 @@ app.delete('/admin/users/:id', authenticateToken, requireAdmin, (req, res) => {
     actorName: req.user.name,
     action: `delete_user:${id}`,
   });
-  res.json({ message: `🗑️ User ${id} deleted.` });
+  res.json({ message: `User ${id} deleted.` });
 });
 
 // View your tenant's sensitive config (apiKey, contact, nisab, etc.).

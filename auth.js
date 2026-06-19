@@ -21,7 +21,7 @@ function authenticateToken(req, res, next) {
     return res.status(401).json({ error: 'Token has been revoked.' });
   }
 
-  jwt.verify(token, PUBLIC_KEY, { algorithms: [JWT_ALGORITHM] }, (err, decoded) => {
+  jwt.verify(token, PUBLIC_KEY, { algorithms: [JWT_ALGORITHM], clockTolerance: 0 }, (err, decoded) => {
     if (err) {
       if (err.name === 'TokenExpiredError') {
         return res.status(401).json({ error: 'Token expired, please log in again.' });
