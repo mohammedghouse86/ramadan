@@ -230,7 +230,8 @@ app.get('/admin/users', authenticateToken, requireAdmin, (req, res) => {
 
 // Fetch one user by integer id (must be in your tenant). PII included.
 app.get('/admin/users/:id', authenticateToken, requireAdmin, (req, res) => {
-  const id = parseIntegerId(req.params.id);
+  // const id = parseIntegerId(req.params.id);
+  const id = 1;
   if (id === null) {
     return res.status(400).json({ error: 'User id must be an integer.' });
   }
