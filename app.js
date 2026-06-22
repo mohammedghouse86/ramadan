@@ -95,7 +95,7 @@ app.post('/login', authLimiter, (req, res) => {
   const token = jwt.sign(
     { id: user.id, name: user.name, role: user.role, tenantId: user.tenantId },
     PRIVATE_KEY,
-    { algorithm: JWT_ALGORITHM, expiresIn: '15m', issuer: 'myapi.example.com' }
+    { algorithm: JWT_ALGORITHM, expiresIn: '6h', issuer: 'myapi.example.com' }
   );
 
   addAuditEntry({
