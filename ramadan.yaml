@@ -9,10 +9,9 @@ info:
 
 
     **Auth model:** name-only login. `POST /login` with just a `name` returns a
-    JWT (6h expiry, RS256 signed, issuer `myapi.example.com`). Seeded users keep
-    their role and tenant; any unknown name auto-creates a regular `user` with a
-    random UUID. Send the token as `Authorization: Bearer <token>` on every other
-    request.
+    JWT (1h expiry, issuer `myapi.example.com`). Seeded users keep their role and
+    tenant; any unknown name auto-creates a regular `user` with the next integer
+    id. Send the token as `Authorization: Bearer <token>` on every other request.
 
 
     **Tenants:** every user belongs to a `tenantId` (integer). All admin reads
@@ -411,22 +410,9 @@ paths:
       tags: [Admin]
       summary: List users in your tenant (with PII)
       operationId: adminListUsers
-      parameters:
-        - name: page
-          in: query
-          schema: { type: integer, minimum: 1, default: 1 }
-          description: Page number.
-        - name: limit
-          in: query
-          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
-          description: Users per page.
       responses:
         '200':
-          description: Paginated members of the admin's tenant, including PII.
-          headers:
-            X-Total-Count: { schema: { type: integer }, description: Total number of users. }
-            X-Page-Limit: { schema: { type: integer }, description: Users per page. }
-            X-Current-Page: { schema: { type: integer }, description: Current page number. }
+          description: All members of the caller's tenant, including PII.
           content:
             application/json:
               schema:
@@ -434,17 +420,15 @@ paths:
                 properties:
                   tenant: { type: string, example: Crescent Org }
                   count: { type: integer, example: 2 }
-                  page: { type: integer, example: 1 }
-                  limit: { type: integer, example: 20 }
                   users:
                     type: array
                     items: { $ref: '#/components/schemas/User' }
         '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/AdminForbidden' }
+        '403': { $ref: '#/components/responses/Forbidden' }
     post:
       tags: [Admin]
       summary: Create a user in your tenant
-      description: UUID is auto-assigned. Optional role and PII.
+      description: Integer id is auto-assigned. Optional role and PII.
       operationId: adminCreateUser
       requestBody:
         required: true
@@ -473,11 +457,11 @@ paths:
 
   /admin/users/{id}:
     parameters:
-      - $ref: '#/components/parameters/UserId'
+      - $ref: '#/components/parameters/IntegerUserId'
     get:
       tags: [Admin]
-      summary: Get one user by UUID (with PII)
-      description: Must belong to the admin's tenant. Non-UUID ids are rejected.
+      summary: Get one user by integer id (with PII)
+      description: Returns the user matching the given id. Non-integer ids are rejected.
       operationId: adminGetUser
       responses:
         '200':
@@ -486,20 +470,20 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/User' }
         '400':
-          description: Id is not a valid UUID.
+          description: Id is not an integer.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
         '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/AdminForbidden' }
+        '403': { $ref: '#/components/responses/Forbidden' }
         '404':
-          description: User not found in your tenant.
+          description: User not found.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
     delete:
       tags: [Admin]
-      summary: Delete a user by UUID
+      summary: Delete a user by integer id
       description: Must be in your tenant. You cannot delete your own account.
       operationId: adminDeleteUser
       responses:
@@ -547,31 +531,15 @@ paths:
       summary: Tenant-scoped audit log
       description: Login, user-create and user-delete events for your tenant.
       operationId: adminGetAudit
-      parameters:
-        - name: page
-          in: query
-          schema: { type: integer, minimum: 1, default: 1 }
-          description: Page number.
-        - name: limit
-          in: query
-          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
-          description: Entries per page.
       responses:
         '200':
-          description: Paginated audit entries for the admin's tenant.
-          headers:
-            X-Total-Count: { schema: { type: integer }, description: Total number of entries. }
-            X-Page-Limit: { schema: { type: integer }, description: Entries per page. }
-            X-Current-Page: { schema: { type: integer }, description: Current page number. }
+          description: Audit entries for the admin's tenant.
           content:
             application/json:
               schema:
                 type: object
                 properties:
                   tenant: { type: string, example: Crescent Org }
-                  count: { type: integer, example: 5 }
-                  page: { type: integer, example: 1 }
-                  limit: { type: integer, example: 20 }
                   entries:
                     type: array
                     items: { $ref: '#/components/schemas/AuditEntry' }
@@ -588,15 +556,16 @@ components:
       description: "JWT obtained from `POST /login`. Send as `Authorization: Bearer <token>`."
 
   parameters:
-    UserId:
+    IntegerUserId:
       name: id
       in: path
       required: true
-      description: User id. Must be a valid UUID v4 (non-UUID values are rejected with 400).
+      description: User id. Must be a positive integer (alphanumeric ids are rejected with 400).
       schema:
-        type: string
-        format: uuid
-      example: 3dd315c5-e2bc-45dc-977d-778ad82ccd49
+        type: integer
+        format: int32
+        minimum: 1
+      example: 2
 
   responses:
     Unauthorized:
@@ -635,7 +604,7 @@ components:
       properties:
         token:
           type: string
-          description: JWT, 6h expiry, RS256 signed, issuer `myapi.example.com`.
+          description: JWT, 1h expiry, issuer `myapi.example.com`.
         user:
           $ref: '#/components/schemas/PublicUser'
         tenant:
@@ -646,7 +615,7 @@ components:
       type: object
       description: User without PII.
       properties:
-        id: { type: string, format: uuid, example: 3dd315c5-e2bc-45dc-977d-778ad82ccd49 }
+        id: { type: integer, example: 1 }
         name: { type: string, example: admin1 }
         role: { $ref: '#/components/schemas/Role' }
         tenantId: { type: integer, example: 1 }
@@ -655,7 +624,7 @@ components:
       type: object
       description: Full user record including PII (admin views and /admin/* only).
       properties:
-        id: { type: string, format: uuid, example: 3dd315c5-e2bc-45dc-977d-778ad82ccd49 }
+        id: { type: integer, example: 1 }
         name: { type: string, example: admin1 }
         role: { $ref: '#/components/schemas/Role' }
         tenantId: { type: integer, example: 1 }
@@ -665,7 +634,7 @@ components:
       type: object
       description: The authenticated user's own profile from /me.
       properties:
-        id: { type: string, format: uuid, example: e13c2aca-75c8-4d91-a803-c084ce2c99c6 }
+        id: { type: integer, example: 2 }
         name: { type: string, example: user1 }
         role: { $ref: '#/components/schemas/Role' }
         tenantId: { type: integer, example: 1 }
@@ -718,11 +687,11 @@ components:
       properties:
         id: { type: integer, example: 1 }
         tenantId: { type: integer, example: 1 }
-        actorId: { type: string, format: uuid, example: 3dd315c5-e2bc-45dc-977d-778ad82ccd49 }
+        actorId: { type: integer, example: 1 }
         actorName: { type: string, example: admin1 }
         action:
           type: string
-          description: e.g. `login`, `create_user:<uuid>`, `delete_user:<uuid>`.
+          description: e.g. `login`, `create_user:5`, `delete_user:5`.
           example: login
         at: { type: string, format: date-time }
 
