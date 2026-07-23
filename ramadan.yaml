@@ -36,7 +36,7 @@ info:
     email: ops@crescent.example.com
 
 servers:
-  - url: http://localhost:3000
+  - url: https://ramadan-rmhl.onrender.com
     description: Local development server
 
 tags:
