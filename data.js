@@ -4,6 +4,7 @@
 // NOTE: auto-created users and the audit log are in-memory only and reset
 // when the server restarts. The seeded tenants/users below always exist.
 // ---------------------------------------------------------------------------
+const crypto = require('crypto');
 
 // ===== Shared Ramadan reference content (tenant-agnostic) ===================
 const ramadan = {
@@ -73,7 +74,7 @@ const tenants = [
 // Integer ids only. role is "admin" or "user". pii holds personal data.
 const users = [
   {
-    id: 1,
+    id: crypto.randomUUID(),
     name: "admin1",
     role: "admin",
     tenantId: 1,
@@ -87,7 +88,7 @@ const users = [
     },
   },
   {
-    id: 2,
+    id: crypto.randomUUID(),
     name: "user1",
     role: "user",
     tenantId: 1,
@@ -101,7 +102,7 @@ const users = [
     },
   },
   {
-    id: 3,
+    id: crypto.randomUUID(),
     name: "admin2",
     role: "admin",
     tenantId: 2,
@@ -115,9 +116,6 @@ const users = [
     },
   },
 ];
-
-// Auto-increment counter for new users (starts after the highest seeded id).
-let nextUserId = Math.max(...users.map((u) => u.id)) + 1;
 
 // ===== Audit log (in-memory) ===============================================
 const auditLog = []; // { id, tenantId, actorId, actorName, action, at }
@@ -148,7 +146,7 @@ function listUsersByTenant(tenantId) {
 // Creates a new regular user. Used when someone logs in with an unknown name.
 function createUser({ name, role = "user", tenantId = 1, pii = {} }) {
   const user = {
-    id: nextUserId++,
+    id: crypto.randomUUID(),
     name,
     role: role === "admin" ? "admin" : "user",
     tenantId,
