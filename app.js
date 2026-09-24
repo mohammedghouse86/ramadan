@@ -26,6 +26,9 @@ const {
 } = require('./data');
 
 const app = express();
+// Render fronts the app with a proxy that sets X-Forwarded-For. Trust exactly
+// one hop so express-rate-limit keys on the real client IP, not the proxy's.
+app.set('trust proxy', 1);
 // replace: app.use(express.json());
 app.use((req, res, next) => {
   if (req.method === 'GET' || req.method === 'HEAD') return next();

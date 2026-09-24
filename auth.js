@@ -45,7 +45,7 @@ function requireAdmin(req, res, next) {
 // Must run AFTER authenticateToken.
 function requireAdmin1(req, res, next) {
   const u = req.user;
-  if (!u || u.id !== 1 || u.name !== 'admin1' || u.role !== 'admin' || u.tenantId !== 1) {
+  if (!u || u.name !== 'admin1' || u.role !== 'admin' || u.tenantId !== 1) {
     return res.status(403).json({ error: '⛔ Restricted to admin1.' });
   }
   next();
