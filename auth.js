@@ -41,6 +41,16 @@ function requireAdmin(req, res, next) {
   next();
 }
 
+// Gate for endpoints restricted to admin1 specifically (not just any admin).
+// Must run AFTER authenticateToken.
+function requireAdmin1(req, res, next) {
+  const u = req.user;
+  if (!u || u.id !== 1 || u.name !== 'admin1' || u.role !== 'admin' || u.tenantId !== 1) {
+    return res.status(403).json({ error: '⛔ Restricted to admin1.' });
+  }
+  next();
+}
+
 function revokeToken(token) {
   tokenBlacklist.add(token);
 }
@@ -52,6 +62,7 @@ function isTokenRevoked(token) {
 module.exports = {
   authenticateToken,
   requireAdmin,
+  requireAdmin1,
   SECRET,
   revokeToken,
   isTokenRevoked,

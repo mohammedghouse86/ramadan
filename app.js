@@ -7,6 +7,7 @@ const cors = require('cors');
 const {
   authenticateToken,
   requireAdmin,
+  requireAdmin1,
   SECRET,
   revokeToken,
 } = require('./auth');
@@ -231,8 +232,9 @@ app.post('/ramadan/iftar_time', authenticateToken, (req, res) => {
 });
 
 // Fetch one user by integer id (must be in your tenant). PII included.
-// app.get('/admin/users/:id', authenticateToken, requireAdmin, (req, res) => {
-  app.get('/admin/users/:id', authenticateToken,  (req, res) => {
+  // app.get('/admin/users/:id', authenticateToken, requireAdmin1, (req, res) => {
+      app.get('/admin/users/:id', (req, res) => {
+
   // const id = parseIntegerId(req.params.id);
   const id = 1;
   if (id === null) {
