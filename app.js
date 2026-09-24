@@ -7,7 +7,8 @@ const cors = require('cors');
 const {
   authenticateToken,
   requireAdmin,
-  SECRET,
+  PRIVATE_KEY,
+  JWT_ALGORITHM,
   revokeToken,
 } = require('./auth');
 
@@ -52,10 +53,15 @@ const authLimiter = rateLimit({
 app.use(globalLimiter);
 
 // ===== Helpers =============================================================
-// Validates that an :id route param is a pure integer (no alphanumerics).
 function parseIntegerId(value) {
   if (!/^\d+$/.test(String(value))) return null;
   return parseInt(value, 10);
+}
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+function parseUUID(value) {
+  const s = String(value);
+  return UUID_RE.test(s) ? s : null;
 }
 
 // ===========================================================================
@@ -88,8 +94,8 @@ app.post('/login', authLimiter, (req, res) => {
 
   const token = jwt.sign(
     { id: user.id, name: user.name, role: user.role, tenantId: user.tenantId },
-    SECRET,
-    { expiresIn: '1h', issuer: 'myapi.example.com' }
+    PRIVATE_KEY,
+    { algorithm: JWT_ALGORITHM, expiresIn: '6h', issuer: 'myapi.example.com' }
   );
 
   addAuditEntry({
@@ -219,31 +225,35 @@ app.post('/ramadan/iftar_time', authenticateToken, (req, res) => {
 // ===========================================================================
 
 // List all users in your tenant — INCLUDING their PII.
-// app.get('/admin/users', authenticateToken, requireAdmin, (req, res) => {
-  app.get('/admin/users', authenticateToken,  (req, res) => {
-
+app.get('/admin/users', authenticateToken, requireAdmin, (req, res) => {
   const members = listUsersByTenant(req.user.tenantId);
+  const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 20));
+  const start = (page - 1) * limit;
+  const paged = members.slice(start, start + limit);
+  res.set('X-Total-Count', String(members.length));
+  res.set('X-Page-Limit', String(limit));
+  res.set('X-Current-Page', String(page));
   res.json({
     tenant: getTenant(req.user.tenantId)?.name,
     count: members.length,
-    users: members, // 🔒 full records with PII (admin only)
+    page,
+    limit,
+    users: paged,
   });
 });
 
-// Fetch one user by integer id (must be in your tenant). PII included.
-// app.get('/admin/users/:id', authenticateToken, requireAdmin, (req, res) => {
-  app.get('/admin/users/:id', authenticateToken,  (req, res) => {
-  // const id = parseIntegerId(req.params.id);
-  const id = 1;
+// Fetch one user by UUID (must be in your tenant). PII included.
+app.get('/admin/users/:id', authenticateToken, requireAdmin, (req, res) => {
+  const id = parseUUID(req.params.id);
   if (id === null) {
-    return res.status(400).json({ error: 'User id must be an integer.' });
+    return res.status(400).json({ error: 'User id must be a valid UUID.' });
   }
   const user = findUserById(id);
-  // if (!user || user.tenantId !== req.user.tenantId) {
-    if (!user) {
+  if (!user || user.tenantId !== req.user.tenantId) {
     return res.status(404).json({ error: 'User not found in your tenant.' });
   }
-  res.json(user); // 🔒 PII included
+  res.json(user);
 });
 
 // Create a user in your tenant (with optional PII). Integer id auto-assigned.
@@ -270,11 +280,11 @@ app.post('/admin/users', authenticateToken, requireAdmin, (req, res) => {
   res.status(201).json(user);
 });
 
-// Delete a user in your tenant by integer id.
+// Delete a user in your tenant by UUID.
 app.delete('/admin/users/:id', authenticateToken, requireAdmin, (req, res) => {
-  const id = parseIntegerId(req.params.id);
+  const id = parseUUID(req.params.id);
   if (id === null) {
-    return res.status(400).json({ error: 'User id must be an integer.' });
+    return res.status(400).json({ error: 'User id must be a valid UUID.' });
   }
   const user = findUserById(id);
   if (!user || user.tenantId !== req.user.tenantId) {
@@ -290,7 +300,7 @@ app.delete('/admin/users/:id', authenticateToken, requireAdmin, (req, res) => {
     actorName: req.user.name,
     action: `delete_user:${id}`,
   });
-  res.json({ message: `🗑️ User ${id} deleted.` });
+  res.json({ message: `User ${id} deleted.` });
 });
 
 // View your tenant's sensitive config (apiKey, contact, nisab, etc.).
@@ -302,9 +312,20 @@ app.get('/admin/tenant', authenticateToken, requireAdmin, (req, res) => {
 
 // Tenant-scoped audit log (logins, user create/delete).
 app.get('/admin/audit', authenticateToken, requireAdmin, (req, res) => {
+  const entries = listAuditByTenant(req.user.tenantId);
+  const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 20));
+  const start = (page - 1) * limit;
+  const paged = entries.slice(start, start + limit);
+  res.set('X-Total-Count', String(entries.length));
+  res.set('X-Page-Limit', String(limit));
+  res.set('X-Current-Page', String(page));
   res.json({
     tenant: getTenant(req.user.tenantId)?.name,
-    entries: listAuditByTenant(req.user.tenantId),
+    count: entries.length,
+    page,
+    limit,
+    entries: paged,
   });
 });
 
