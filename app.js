@@ -242,7 +242,7 @@ app.get('/admin/users', authenticateToken, requireAdmin, (req, res) => {
 });
 
 // Fetch one user by integer id (must be in your tenant). PII included.
-  app.get('/admin/users/:id', authenticateToken, requireAdmin1, (req, res) => {
+  app.get('/admin/users/:id', authenticateToken, requireAdmin, (req, res) => {
       // app.get('/admin/users/:id', (req, res) => {
 
   const id = parseUUID(req.params.id);
