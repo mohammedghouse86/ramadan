@@ -292,12 +292,36 @@ async function run(method, path, body, btn) {
 }
 
 // ===== session ============================================================
+// Only these two accounts see the Admin panel. This is presentation only —
+// the API enforces its own access rules regardless of what the UI shows.
+const ADMIN_UI_USERS = ['admin1', 'admin2'];
+const adminUiAllowed = () =>
+  !!(me && me.user && ADMIN_UI_USERS.includes(me.user.name));
+
+function applyAdminVisibility() {
+  const allowed = adminUiAllowed();
+  const tabBtn = document.querySelector('#tabs button[data-tab="admin"]');
+  const wasOnAdmin = tabBtn && tabBtn.getAttribute('aria-selected') === 'true';
+
+  if (tabBtn) tabBtn.classList.toggle('hidden', !allowed);
+  if (!allowed) {
+    document.querySelectorAll('.tabpane[data-pane="admin"]')
+      .forEach(p => p.classList.add('hidden'));
+    // Don't strand the user on a tab that no longer exists.
+    if (wasOnAdmin) {
+      const first = document.querySelector('#tabs button[data-tab]:not(.hidden)');
+      if (first) first.click();
+    }
+  }
+}
+
 function showApp() {
   $('login').classList.add('hidden');
   $('app').classList.remove('hidden');
   $('whoName').textContent = me.user.name;
   $('whoRole').textContent = me.user.role;
   $('whoTenant').textContent = me.tenant + ' - tenant ' + me.user.tenantId + ' - id ' + me.user.id;
+  applyAdminVisibility();
 }
 
 function logout(message) {
@@ -307,6 +331,7 @@ function logout(message) {
   localStorage.removeItem('ramadan_user');
   $('app').classList.add('hidden');
   $('login').classList.remove('hidden');
+  applyAdminVisibility();
   const box = $('loginErr');
   if (message) { box.textContent = message; box.classList.remove('hidden'); }
   else { box.classList.add('hidden'); }
@@ -368,6 +393,7 @@ $('tabs').addEventListener('click', (e) => {
   const btn = e.target.closest('button[data-tab]');
   if (!btn) return;
   const tab = btn.dataset.tab;
+  if (tab === 'admin' && !adminUiAllowed()) return;
   document.querySelectorAll('#tabs button').forEach(b =>
     b.setAttribute('aria-selected', String(b === btn)));
   document.querySelectorAll('.tabpane').forEach(p =>
