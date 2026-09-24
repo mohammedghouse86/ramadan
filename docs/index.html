@@ -101,8 +101,8 @@
           <input id="name" value="admin1" autocomplete="username" placeholder="admin1">
         </div>
         <div>
-          <label for="tenantId">Tenant id (new users only)</label>
-          <input id="tenantId" inputmode="numeric" placeholder="1">
+          <label for="password">Password</label>
+          <input id="password" type="password" autocomplete="current-password" placeholder="anything">
         </div>
       </div>
       <button class="primary" id="loginBtn">Log in</button>
@@ -314,7 +314,6 @@ function logout(message) {
 
 $('loginBtn').addEventListener('click', async (e) => {
   const name = $('name').value.trim();
-  const tid = $('tenantId').value.trim();
   const err = $('loginErr');
   err.classList.add('hidden');
 
@@ -324,8 +323,8 @@ $('loginBtn').addEventListener('click', async (e) => {
     return;
   }
 
+  // The API authenticates on name alone, so the password field is not sent.
   const body = { name };
-  if (tid) body.tenantId = Number(tid);
 
   const btn = e.currentTarget;
   const label = btn.textContent;
@@ -355,7 +354,7 @@ $('loginBtn').addEventListener('click', async (e) => {
 });
 
 $('name').addEventListener('keydown', e => { if (e.key === 'Enter') $('loginBtn').click(); });
-$('tenantId').addEventListener('keydown', e => { if (e.key === 'Enter') $('loginBtn').click(); });
+$('password').addEventListener('keydown', e => { if (e.key === 'Enter') $('loginBtn').click(); });
 
 $('logoutBtn').addEventListener('click', () => logout());
 
