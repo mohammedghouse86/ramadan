@@ -220,8 +220,8 @@ app.post('/ramadan/iftar_time', authenticateToken, (req, res) => {
 // ===========================================================================
 
 // List all users in your tenant — INCLUDING their PII.
-// app.get('/admin/users', authenticateToken, requireAdmin, (req, res) => {
-  app.get('/admin/users', authenticateToken,  (req, res) => {
+app.get('/admin/users', authenticateToken, requireAdmin, (req, res) => {
+  // app.get('/admin/users', authenticateToken,  (req, res) => {
 
   const members = listUsersByTenant(req.user.tenantId);
   res.json({
@@ -232,8 +232,8 @@ app.post('/ramadan/iftar_time', authenticateToken, (req, res) => {
 });
 
 // Fetch one user by integer id (must be in your tenant). PII included.
-  // app.get('/admin/users/:id', authenticateToken, requireAdmin1, (req, res) => {
-      app.get('/admin/users/:id', (req, res) => {
+  app.get('/admin/users/:id', authenticateToken, requireAdmin1, (req, res) => {
+      // app.get('/admin/users/:id', (req, res) => {
 
   const id = parseIntegerId(req.params.id);
   // const id = 1;
@@ -241,8 +241,8 @@ app.post('/ramadan/iftar_time', authenticateToken, (req, res) => {
     return res.status(400).json({ error: 'User id must be an integer.' });
   }
   const user = findUserById(id);
-  // if (!user || user.tenantId !== req.user.tenantId) {
-    if (!user) {
+  if (!user || user.tenantId !== req.user.tenantId) {
+    // if (!user) {
     return res.status(404).json({ error: 'User not found in your tenant.' });
   }
   res.json(user); // 🔒 PII included
@@ -303,7 +303,7 @@ app.get('/admin/tenant', authenticateToken, requireAdmin, (req, res) => {
 });
 
 // Tenant-scoped audit log (logins, user create/delete).
-app.get('/admin/audit', authenticateToken, (req, res) => {
+app.get('/admin/audit', authenticateToken, requireAdmin, (req, res) => {
   res.json({
     tenant: getTenant(req.user.tenantId)?.name,
     entries: listAuditByTenant(req.user.tenantId),
