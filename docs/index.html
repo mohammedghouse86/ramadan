@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ramadan API Console</title>
+<style>
+  :root{
+    --bg:#f6f7f9; --panel:#ffffff; --border:#e2e5ea; --text:#15181d;
+    --muted:#666e7a; --accent:#1f7a5c; --accent-text:#ffffff;
+    --err-bg:#fdecec; --err-border:#f2b8b8; --err-text:#8d2020;
+    --code-bg:#f2f3f5; --radius:10px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#14171b; --panel:#1c2026; --border:#2c323a; --text:#e8eaed;
+      --muted:#98a1ad; --accent:#3aa17a; --accent-text:#07110d;
+      --err-bg:#361c1c; --err-border:#5e2d2d; --err-text:#f3b3b3;
+      --code-bg:#12151a;
+    }
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font:15px/1.5 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  }
+  .wrap{max-width:860px; margin:0 auto; padding:24px 16px 64px}
+  h1{font-size:22px; margin:0 0 4px}
+  h2{font-size:15px; margin:0 0 12px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted)}
+  p.sub{margin:0 0 24px; color:var(--muted); font-size:13px}
+  .panel{
+    background:var(--panel); border:1px solid var(--border);
+    border-radius:var(--radius); padding:18px; margin-bottom:16px;
+  }
+  label{display:block; font-size:13px; color:var(--muted); margin:0 0 6px}
+  input{
+    width:100%; padding:9px 11px; font-size:15px; font-family:inherit;
+    color:var(--text); background:var(--bg);
+    border:1px solid var(--border); border-radius:8px;
+  }
+  input:focus{outline:2px solid var(--accent); outline-offset:1px}
+  button{
+    font:inherit; font-size:14px; padding:8px 14px; cursor:pointer;
+    background:var(--panel); color:var(--text);
+    border:1px solid var(--border); border-radius:8px;
+  }
+  button:hover:not(:disabled){border-color:var(--accent)}
+  button:disabled{opacity:.5; cursor:default}
+  button.primary{background:var(--accent); color:var(--accent-text); border-color:var(--accent); font-weight:600}
+  button.danger:hover:not(:disabled){border-color:var(--err-border); color:var(--err-text)}
+  .row{display:flex; gap:8px; flex-wrap:wrap; align-items:flex-end}
+  .row > .grow{flex:1; min-width:140px}
+  .btns{display:flex; gap:8px; flex-wrap:wrap}
+  .hidden{display:none !important}
+
+  header.bar{
+    display:flex; justify-content:space-between; align-items:center;
+    gap:12px; flex-wrap:wrap; margin-bottom:16px;
+  }
+  .who{font-size:14px}
+  .who b{font-size:15px}
+  .tag{
+    display:inline-block; font-size:11px; font-weight:700; text-transform:uppercase;
+    letter-spacing:.05em; padding:2px 7px; border-radius:99px;
+    background:var(--accent); color:var(--accent-text); vertical-align:1px;
+  }
+  .who span.meta{color:var(--muted)}
+
+  nav.tabs{display:flex; gap:4px; flex-wrap:wrap; margin-bottom:16px}
+  nav.tabs button{border-radius:99px}
+  nav.tabs button[aria-selected="true"]{
+    background:var(--accent); color:var(--accent-text); border-color:var(--accent); font-weight:600;
+  }
+
+  .out-head{display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:10px}
+  .out-head .path{font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12px; color:var(--muted); word-break:break-all}
+  pre{
+    margin:0; padding:12px; background:var(--code-bg); border-radius:8px;
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12.5px;
+    white-space:pre-wrap; word-break:break-word; max-height:340px; overflow:auto;
+  }
+  .error{background:var(--err-bg); border:1px solid var(--err-border); color:var(--err-text); padding:10px 12px; border-radius:8px; font-size:14px}
+  .note{font-size:12.5px; color:var(--muted); margin:10px 0 0}
+  .note code{background:var(--code-bg); padding:1px 5px; border-radius:4px}
+  .spin{display:inline-block; width:13px; height:13px; border:2px solid currentColor; border-top-color:transparent; border-radius:50%; animation:s .7s linear infinite; vertical-align:-2px}
+  @keyframes s{to{transform:rotate(360deg)}}
+  .fields{display:grid; gap:12px; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); margin-bottom:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ===== LOGIN ===== -->
+  <section id="login">
+    <h1>Ramadan API Console</h1>
+    <p class="sub">Name-only login. An unknown name is auto-created as a regular user.</p>
+    <div class="panel">
+      <div class="fields">
+        <div>
+          <label for="name">Name</label>
+          <input id="name" value="admin1" autocomplete="username" placeholder="admin1">
+        </div>
+        <div>
+          <label for="tenantId">Tenant id (new users only)</label>
+          <input id="tenantId" inputmode="numeric" placeholder="1">
+        </div>
+      </div>
+      <button class="primary" id="loginBtn">Log in</button>
+      <div id="loginErr" class="error hidden" style="margin-top:12px"></div>
+      <p class="note">
+        Seeded users: <code>admin1</code>, <code>user1</code> (Crescent Org) and <code>admin2</code> (Hilal Foundation).
+        The API sleeps when idle, so the first request can take up to a minute.
+      </p>
+    </div>
+  </section>
+
+  <!-- ===== APP ===== -->
+  <section id="app" class="hidden">
+    <header class="bar">
+      <div class="who">
+        <b id="whoName"></b> <span class="tag" id="whoRole"></span><br>
+        <span class="meta" id="whoTenant"></span>
+      </div>
+      <div class="btns">
+        <button id="revokeBtn" class="danger">Revoke token</button>
+        <button id="logoutBtn">Log out</button>
+      </div>
+    </header>
+
+    <nav class="tabs" id="tabs">
+      <button data-tab="info" aria-selected="true">Ramadan info</button>
+      <button data-tab="tools" aria-selected="false">Tools</button>
+      <button data-tab="me" aria-selected="false">My profile</button>
+      <button data-tab="admin" aria-selected="false">Admin</button>
+    </nav>
+
+    <!-- info -->
+    <div class="panel tabpane" data-pane="info">
+      <h2>Read-only endpoints</h2>
+      <div class="btns" id="infoBtns"></div>
+    </div>
+
+    <!-- tools -->
+    <div class="panel tabpane hidden" data-pane="tools">
+      <h2>Night of Power</h2>
+      <div class="row">
+        <div class="grow"><label for="nopDay">Day of Ramadan</label><input id="nopDay" inputmode="numeric" value="27"></div>
+        <button data-post="/ramadan/night_of_power" data-num="day" data-src="nopDay">Check</button>
+      </div>
+    </div>
+    <div class="panel tabpane hidden" data-pane="tools">
+      <h2>Is fasting required?</h2>
+      <div class="row">
+        <div class="grow"><label for="fastDay">Day of Ramadan</label><input id="fastDay" inputmode="numeric" value="10"></div>
+        <button data-post="/ramadan/fast_required" data-num="day" data-src="fastDay">Check</button>
+      </div>
+    </div>
+    <div class="panel tabpane hidden" data-pane="tools">
+      <h2>Is zakat due?</h2>
+      <div class="row">
+        <div class="grow"><label for="wealth">Wealth</label><input id="wealth" inputmode="numeric" value="5000"></div>
+        <button data-post="/ramadan/zakat_due" data-num="wealth" data-src="wealth">Check</button>
+      </div>
+      <p class="note">Compared against your tenant's nisab threshold.</p>
+    </div>
+    <div class="panel tabpane hidden" data-pane="tools">
+      <h2>Iftar time</h2>
+      <div class="row">
+        <div class="grow"><label for="city">City</label><input id="city" value="Mecca" placeholder="Mecca"></div>
+        <button data-post="/ramadan/iftar_time" data-str="city" data-src="city">Look up</button>
+      </div>
+      <p class="note">Cities come from your tenant's timetable; a miss lists the valid ones.</p>
+    </div>
+
+    <!-- me -->
+    <div class="panel tabpane hidden" data-pane="me">
+      <h2>My profile</h2>
+      <button data-get="/me">Load /me</button>
+      <p class="note">Your own record, including your PII.</p>
+    </div>
+
+    <!-- admin -->
+    <div class="panel tabpane hidden" data-pane="admin">
+      <h2>Tenant &amp; audit</h2>
+      <div class="btns">
+        <button data-get="/admin/users">List users</button>
+        <button data-get="/admin/tenant">Tenant config</button>
+        <button data-get="/admin/audit">Audit log</button>
+      </div>
+      <p class="note">Scoped to your tenant. Admin-only endpoints return 403 for regular users.</p>
+    </div>
+    <div class="panel tabpane hidden" data-pane="admin">
+      <h2>Fetch user by id</h2>
+      <div class="row">
+        <div class="grow"><label for="getId">User id</label><input id="getId" inputmode="numeric" value="1"></div>
+        <button id="getUserBtn">Fetch</button>
+      </div>
+    </div>
+    <div class="panel tabpane hidden" data-pane="admin">
+      <h2>Create user</h2>
+      <div class="fields">
+        <div><label for="cName">Name</label><input id="cName" placeholder="newperson"></div>
+        <div><label for="cRole">Role</label><input id="cRole" value="user" placeholder="user or admin"></div>
+        <div><label for="cFullName">Full name</label><input id="cFullName" placeholder="optional"></div>
+        <div><label for="cEmail">Email</label><input id="cEmail" placeholder="optional"></div>
+        <div><label for="cPhone">Phone</label><input id="cPhone" placeholder="optional"></div>
+      </div>
+      <button id="createBtn" class="primary">Create</button>
+    </div>
+    <div class="panel tabpane hidden" data-pane="admin">
+      <h2>Delete user</h2>
+      <div class="row">
+        <div class="grow"><label for="delId">User id</label><input id="delId" inputmode="numeric" placeholder="4"></div>
+        <button id="deleteBtn" class="danger">Delete</button>
+      </div>
+      <p class="note">You cannot delete your own account.</p>
+    </div>
+
+    <!-- output -->
+    <div class="panel" id="out">
+      <div class="out-head">
+        <h2 style="margin:0">Response</h2>
+        <span class="path" id="outPath"></span>
+      </div>
+      <pre id="outBody">Pick an endpoint above.</pre>
+    </div>
+  </section>
+</div>
+
+<script>
+const API = 'https://ramadan-rmhl.onrender.com';
+const $ = id => document.getElementById(id);
+
+let token = localStorage.getItem('ramadan_token') || '';
+let me = null;
+try { me = JSON.parse(localStorage.getItem('ramadan_user') || 'null'); } catch (e) { me = null; }
+
+// Read-only endpoints, rendered as a row of buttons.
+const INFO = [
+  ['/ramadan', 'Overview'],
+  ['/ramadan/month', 'Month'],
+  ['/ramadan/benefits', 'Benefits'],
+  ['/ramadan/fasting', 'Fasting'],
+  ['/ramadan/iftar', 'Iftar'],
+  ['/ramadan/suhoor', 'Suhoor'],
+  ['/ramadan/prayers', 'Prayers'],
+  ['/ramadan/tips', 'Tips'],
+  ['/ramadan/zakat', 'Zakat'],
+];
+$('infoBtns').innerHTML = INFO
+  .map(([path, label]) => '<button data-get="' + path + '">' + label + '</button>')
+  .join('');
+
+// ===== transport ==========================================================
+async function call(method, path, body) {
+  const headers = { Accept: 'application/json' };
+  if (token) headers.Authorization = 'Bearer ' + token;
+  if (body !== undefined) headers['Content-Type'] = 'application/json';
+
+  const res = await fetch(API + path, {
+    method,
+    headers,
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+
+  const text = await res.text();
+  let data;
+  try { data = JSON.parse(text); } catch (e) { data = { raw: text }; }
+  return { ok: res.ok, status: res.status, data };
+}
+
+// Runs a request, shows the result, and drops back to login on 401.
+async function run(method, path, body, btn) {
+  const label = btn ? btn.innerHTML : null;
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spin"></span>'; }
+  $('outPath').textContent = method + ' ' + path + '  ...';
+
+  try {
+    const r = await call(method, path, body);
+    $('outPath').textContent = method + ' ' + path + '  -> ' + r.status;
+    $('outBody').textContent = JSON.stringify(r.data, null, 2);
+    if (r.status === 401) logout('Session ended: ' + (r.data.error || 'please log in again.'));
+    return r;
+  } catch (err) {
+    $('outPath').textContent = method + ' ' + path + '  -> network error';
+    $('outBody').textContent = String((err && err.message) || err) +
+      '\n\nThe API may be waking up from sleep - try again in a moment.';
+    return { ok: false, status: 0, data: null };
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = label; }
+  }
+}
+
+// ===== session ============================================================
+function showApp() {
+  $('login').classList.add('hidden');
+  $('app').classList.remove('hidden');
+  $('whoName').textContent = me.user.name;
+  $('whoRole').textContent = me.user.role;
+  $('whoTenant').textContent = me.tenant + ' - tenant ' + me.user.tenantId + ' - id ' + me.user.id;
+}
+
+function logout(message) {
+  token = '';
+  me = null;
+  localStorage.removeItem('ramadan_token');
+  localStorage.removeItem('ramadan_user');
+  $('app').classList.add('hidden');
+  $('login').classList.remove('hidden');
+  const box = $('loginErr');
+  if (message) { box.textContent = message; box.classList.remove('hidden'); }
+  else { box.classList.add('hidden'); }
+}
+
+$('loginBtn').addEventListener('click', async (e) => {
+  const name = $('name').value.trim();
+  const tid = $('tenantId').value.trim();
+  const err = $('loginErr');
+  err.classList.add('hidden');
+
+  if (!name) {
+    err.textContent = 'A name is required to log in.';
+    err.classList.remove('hidden');
+    return;
+  }
+
+  const body = { name };
+  if (tid) body.tenantId = Number(tid);
+
+  const btn = e.currentTarget;
+  const label = btn.textContent;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> contacting API...';
+
+  try {
+    const r = await call('POST', '/login', body);
+    if (!r.ok || !r.data.token) {
+      err.textContent = (r.data && r.data.error) || 'Login failed.';
+      err.classList.remove('hidden');
+      return;
+    }
+    token = r.data.token;
+    me = { user: r.data.user, tenant: r.data.tenant };
+    localStorage.setItem('ramadan_token', token);
+    localStorage.setItem('ramadan_user', JSON.stringify(me));
+    showApp();
+    run('GET', '/me');
+  } catch (ex) {
+    err.textContent = 'Could not reach the API: ' + ((ex && ex.message) || ex);
+    err.classList.remove('hidden');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = label;
+  }
+});
+
+$('name').addEventListener('keydown', e => { if (e.key === 'Enter') $('loginBtn').click(); });
+$('tenantId').addEventListener('keydown', e => { if (e.key === 'Enter') $('loginBtn').click(); });
+
+$('logoutBtn').addEventListener('click', () => logout());
+
+$('revokeBtn').addEventListener('click', async (e) => {
+  const r = await run('POST', '/users/revokeToken', {}, e.currentTarget);
+  if (r.ok) logout('Token revoked. Log in again for a fresh one.');
+});
+
+// ===== tabs ===============================================================
+$('tabs').addEventListener('click', (e) => {
+  const btn = e.target.closest('button[data-tab]');
+  if (!btn) return;
+  const tab = btn.dataset.tab;
+  document.querySelectorAll('#tabs button').forEach(b =>
+    b.setAttribute('aria-selected', String(b === btn)));
+  document.querySelectorAll('.tabpane').forEach(p =>
+    p.classList.toggle('hidden', p.dataset.pane !== tab));
+});
+
+// ===== generic wiring for data-get / data-post ============================
+document.addEventListener('click', (e) => {
+  const get = e.target.closest('button[data-get]');
+  if (get) { run('GET', get.dataset.get, undefined, get); return; }
+
+  const post = e.target.closest('button[data-post]');
+  if (!post) return;
+  const value = $(post.dataset.src).value.trim();
+  const body = post.dataset.num
+    ? { [post.dataset.num]: Number(value) }
+    : { [post.dataset.str]: value };
+  run('POST', post.dataset.post, body, post);
+});
+
+// ===== admin forms ========================================================
+$('getUserBtn').addEventListener('click', (e) => {
+  const id = $('getId').value.trim();
+  if (!id) return;
+  run('GET', '/admin/users/' + encodeURIComponent(id), undefined, e.currentTarget);
+});
+
+$('createBtn').addEventListener('click', async (e) => {
+  const name = $('cName').value.trim();
+  if (!name) {
+    $('outPath').textContent = 'POST /admin/users';
+    $('outBody').textContent = 'name is required.';
+    return;
+  }
+
+  const pii = {};
+  if ($('cFullName').value.trim()) pii.fullName = $('cFullName').value.trim();
+  if ($('cEmail').value.trim()) pii.email = $('cEmail').value.trim();
+  if ($('cPhone').value.trim()) pii.phone = $('cPhone').value.trim();
+
+  const body = { name, role: $('cRole').value.trim() || 'user' };
+  if (Object.keys(pii).length) body.pii = pii;
+
+  const r = await run('POST', '/admin/users', body, e.currentTarget);
+  if (r.ok) {
+    $('cName').value = '';
+    $('cFullName').value = '';
+    $('cEmail').value = '';
+    $('cPhone').value = '';
+  }
+});
+
+$('deleteBtn').addEventListener('click', (e) => {
+  const id = $('delId').value.trim();
+  if (!id) return;
+  if (!confirm('Delete user ' + id + '? This cannot be undone.')) return;
+  run('DELETE', '/admin/users/' + encodeURIComponent(id), undefined, e.currentTarget);
+});
+
+// ===== boot ===============================================================
+if (token && me && me.user) showApp();
+</script>
+</body>
+</html>
