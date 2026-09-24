@@ -70,10 +70,11 @@ const tenants = [
 ];
 
 // ===== Users ===============================================================
-// Integer ids only. role is "admin" or "user". pii holds personal data.
+// UUID ids, fixed for the seeded users so they stay stable across restarts.
+// role is "admin" or "user". pii holds personal data.
 const users = [
   {
-    id: 1,
+    id: "71affabb-5d93-4c5f-95c3-441f095bfc0c",
     name: "admin1",
     role: "admin",
     tenantId: 1,
@@ -87,7 +88,7 @@ const users = [
     },
   },
   {
-    id: 2,
+    id: "9e5fa2c1-5f04-47f1-9fec-49447493dc00",
     name: "user1",
     role: "user",
     tenantId: 1,
@@ -101,7 +102,7 @@ const users = [
     },
   },
   {
-    id: 3,
+    id: "f0752d6b-50e9-4317-acf6-138928c8ea58",
     name: "admin2",
     role: "admin",
     tenantId: 2,
@@ -116,8 +117,7 @@ const users = [
   },
 ];
 
-// Auto-increment counter for new users (starts after the highest seeded id).
-let nextUserId = Math.max(...users.map((u) => u.id)) + 1;
+// User ids are UUIDs, generated per user — no counter needed.
 
 // ===== Audit log (in-memory) ===============================================
 const auditLog = []; // { id, tenantId, actorId, actorName, action, at }
@@ -148,7 +148,7 @@ function listUsersByTenant(tenantId) {
 // Creates a new regular user. Used when someone logs in with an unknown name.
 function createUser({ name, role = "user", tenantId = 1, pii = {} }) {
   const user = {
-    id: nextUserId++,
+    id: crypto.randomUUID(),
     name,
     role: role === "admin" ? "admin" : "user",
     tenantId,
@@ -168,7 +168,7 @@ function createUser({ name, role = "user", tenantId = 1, pii = {} }) {
 function deleteUser(id) {
   const idx = users.findIndex((u) => u.id === id);
   if (idx === -1) return false;
-  users.splice(idx, 1);
+  // users.splice(idx, 1);
   return true;
 }
 

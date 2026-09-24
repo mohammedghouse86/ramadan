@@ -190,11 +190,19 @@
       <p class="note">Scoped to your tenant. Admin-only endpoints return 403 for regular users.</p>
     </div>
     <div class="panel tabpane hidden" data-pane="admin">
-      <h2>Fetch user by id</h2>
+      <h2>Users in your tenant</h2>
       <div class="row">
-        <div class="grow"><label for="getId">User id</label><input id="getId" inputmode="numeric" value="1"></div>
-        <button id="getUserBtn">Fetch</button>
+        <div class="grow">
+          <label for="userPick">Pick a user</label>
+          <select id="userPick"><option value="">Loading…</option></select>
+        </div>
+        <button id="refreshUsersBtn">Refresh</button>
       </div>
+      <div class="row" style="margin-top:12px">
+        <button id="getUserBtn" class="primary">Fetch details</button>
+        <button id="deleteUserBtn" class="danger">Delete</button>
+      </div>
+      <p class="note">Selecting a name calls <code>/admin/users/&lt;uuid&gt;</code>. You cannot delete your own account.</p>
     </div>
     <div class="panel tabpane hidden" data-pane="admin">
       <h2>Create user</h2>
@@ -206,14 +214,6 @@
         <div><label for="cPhone">Phone</label><input id="cPhone" placeholder="optional"></div>
       </div>
       <button id="createBtn" class="primary">Create</button>
-    </div>
-    <div class="panel tabpane hidden" data-pane="admin">
-      <h2>Delete user</h2>
-      <div class="row">
-        <div class="grow"><label for="delId">User id</label><input id="delId" inputmode="numeric" placeholder="4"></div>
-        <button id="deleteBtn" class="danger">Delete</button>
-      </div>
-      <p class="note">You cannot delete your own account.</p>
     </div>
 
     <!-- output -->
@@ -304,6 +304,7 @@ function applyAdminVisibility() {
   const wasOnAdmin = tabBtn && tabBtn.getAttribute('aria-selected') === 'true';
 
   if (tabBtn) tabBtn.classList.toggle('hidden', !allowed);
+  if (allowed) loadUsers();
   if (!allowed) {
     document.querySelectorAll('.tabpane[data-pane="admin"]')
       .forEach(p => p.classList.add('hidden'));
@@ -415,10 +416,38 @@ document.addEventListener('click', (e) => {
 });
 
 // ===== admin forms ========================================================
+// Fills the picker from /admin/users. Values are the user's UUID.
+async function loadUsers(btn) {
+  const sel = $('userPick');
+  const previous = sel.value;
+  const r = await call('GET', '/admin/users');
+  if (!r.ok || !r.data || !Array.isArray(r.data.users)) {
+    sel.innerHTML = '<option value="">Could not load users</option>';
+    return;
+  }
+  sel.innerHTML = r.data.users
+    .map(u => '<option value="' + u.id + '">' + u.name + ' — ' + u.role +
+              (me && me.user && u.id === me.user.id ? ' (you)' : '') + '</option>')
+    .join('');
+  if (previous && r.data.users.some(u => u.id === previous)) sel.value = previous;
+}
+
+$('refreshUsersBtn').addEventListener('click', (e) => loadUsers(e.currentTarget));
+
 $('getUserBtn').addEventListener('click', (e) => {
-  const id = $('getId').value.trim();
+  const id = $('userPick').value;
   if (!id) return;
   run('GET', '/admin/users/' + encodeURIComponent(id), undefined, e.currentTarget);
+});
+
+$('deleteUserBtn').addEventListener('click', async (e) => {
+  const sel = $('userPick');
+  const id = sel.value;
+  if (!id) return;
+  const label = sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].text : id;
+  if (!confirm('Delete ' + label + '? This cannot be undone.')) return;
+  const r = await run('DELETE', '/admin/users/' + encodeURIComponent(id), undefined, e.currentTarget);
+  if (r && r.ok) loadUsers();
 });
 
 $('createBtn').addEventListener('click', async (e) => {
@@ -443,15 +472,10 @@ $('createBtn').addEventListener('click', async (e) => {
     $('cFullName').value = '';
     $('cEmail').value = '';
     $('cPhone').value = '';
+    loadUsers();
   }
 });
 
-$('deleteBtn').addEventListener('click', (e) => {
-  const id = $('delId').value.trim();
-  if (!id) return;
-  if (!confirm('Delete user ' + id + '? This cannot be undone.')) return;
-  run('DELETE', '/admin/users/' + encodeURIComponent(id), undefined, e.currentTarget);
-});
 
 // ===== boot ===============================================================
 if (token && me && me.user) showApp();

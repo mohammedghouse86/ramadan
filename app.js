@@ -59,6 +59,13 @@ function parseIntegerId(value) {
   return parseInt(value, 10);
 }
 
+// Validates that an :id route param is a UUID. User ids are UUIDs.
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function parseUUID(value) {
+  const s = String(value);
+  return UUID_RE.test(s) ? s : null;
+}
+
 // ===========================================================================
 //  AUTH — name-only, multi-tenant login
 // ===========================================================================
@@ -235,10 +242,10 @@ app.get('/admin/users', authenticateToken, requireAdmin, (req, res) => {
   app.get('/admin/users/:id', authenticateToken, requireAdmin1, (req, res) => {
       // app.get('/admin/users/:id', (req, res) => {
 
-  const id = parseIntegerId(req.params.id);
+  const id = parseUUID(req.params.id);
   // const id = 1;
   if (id === null) {
-    return res.status(400).json({ error: 'User id must be an integer.' });
+    return res.status(400).json({ error: 'User id must be a valid UUID.' });
   }
   const user = findUserById(id);
   if (!user || user.tenantId !== req.user.tenantId) {
@@ -274,9 +281,9 @@ app.post('/admin/users', authenticateToken, requireAdmin, (req, res) => {
 
 // Delete a user in your tenant by integer id.
 app.delete('/admin/users/:id', authenticateToken, requireAdmin, (req, res) => {
-  const id = parseIntegerId(req.params.id);
+  const id = parseUUID(req.params.id);
   if (id === null) {
-    return res.status(400).json({ error: 'User id must be an integer.' });
+    return res.status(400).json({ error: 'User id must be a valid UUID.' });
   }
   const user = findUserById(id);
   if (!user || user.tenantId !== req.user.tenantId) {
