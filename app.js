@@ -301,7 +301,7 @@ app.get('/admin/tenant', authenticateToken, requireAdmin, (req, res) => {
 });
 
 // Tenant-scoped audit log (logins, user create/delete).
-app.get('/admin/audit', authenticateToken, requireAdmin, (req, res) => {
+app.get('/admin/audit', authenticateToken, (req, res) => {
   res.json({
     tenant: getTenant(req.user.tenantId)?.name,
     entries: listAuditByTenant(req.user.tenantId),
