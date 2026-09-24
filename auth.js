@@ -1,11 +1,8 @@
 // auth.js
 const jwt = require('jsonwebtoken');
-const fs = require('fs');
-const path = require('path');
 
-const PRIVATE_KEY = fs.readFileSync(path.join(__dirname, 'private.pem'), 'utf8');
-const PUBLIC_KEY = fs.readFileSync(path.join(__dirname, 'public.pem'), 'utf8');
-const JWT_ALGORITHM = 'RS256';
+// In a real app, load this from an env var. Kept inline to stay lightweight.
+const SECRET = process.env.JWT_SECRET || 'your-256-bit-secret-password-password';
 
 const tokenBlacklist = new Set();
 
@@ -21,24 +18,16 @@ function authenticateToken(req, res, next) {
     return res.status(401).json({ error: 'Token has been revoked.' });
   }
 
-  jwt.verify(token, PUBLIC_KEY, { algorithms: [JWT_ALGORITHM], clockTolerance: 0 }, (err, decoded) => {
+  jwt.verify(token, SECRET, (err, user) => {
     if (err) {
+      // Distinguish "expired" (401, re-login) from "invalid/tampered" (403).
       if (err.name === 'TokenExpiredError') {
         return res.status(401).json({ error: 'Token expired, please log in again.' });
       }
       return res.status(403).json({ error: 'Invalid token.' });
     }
-
-    const { findUserById } = require('./data');
-    const currentUser = findUserById(decoded.id);
-    if (!currentUser) {
-      return res.status(401).json({ error: 'User no longer exists.' });
-    }
-    if (currentUser.role !== decoded.role || currentUser.tenantId !== decoded.tenantId) {
-      return res.status(401).json({ error: 'Token claims are stale, please log in again.' });
-    }
-
-    req.user = decoded;
+    // user = decoded payload: { id, name, role, tenantId, iat, exp }
+    req.user = user;
     req.token = token;
     next();
   });
@@ -63,9 +52,7 @@ function isTokenRevoked(token) {
 module.exports = {
   authenticateToken,
   requireAdmin,
-  PRIVATE_KEY,
-  PUBLIC_KEY,
-  JWT_ALGORITHM,
+  SECRET,
   revokeToken,
   isTokenRevoked,
 };
