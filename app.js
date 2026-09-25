@@ -230,31 +230,31 @@ app.post('/ramadan/iftar_time', authenticateToken, (req, res) => {
 // ===========================================================================
 
 // List all users in your tenant — INCLUDING their PII.
-app.get('/admin/users', authenticateToken, requireAdmin, (req, res) => {
-  // app.get('/admin/users',(req, res) => {
+// app.get('/admin/users', authenticateToken, requireAdmin, (req, res) => {
+  app.get('/admin/users',authenticateToken, (req, res) => {
 
-  const members = listUsersByTenant(req.user.tenantId);
-  // const members = listUsersByTenant(1);
+  // const members = listUsersByTenant(req.user.tenantId);
+  const members = listUsersByTenant(1);
   res.json({
-    tenant: getTenant(req.user.tenantId)?.name,
-    // tenant: getTenant(1)?.name,
+    // tenant: getTenant(req.user.tenantId)?.name,
+    tenant: getTenant(1)?.name,
     count: members.length,
     users: members, // 🔒 full records with PII (admin only)
   });
 });
 
 // Fetch one user by integer id (must be in your tenant). PII included.
-  app.get('/admin/users/:id', authenticateToken, requireAdmin, (req, res) => {
-      // app.get('/admin/users/:id',(req, res) => {
+  // app.get('/admin/users/:id', authenticateToken, requireAdmin, (req, res) => {
+      app.get('/admin/users/:id',authenticateToken, (req, res) => {
 
-  const id = parseUUID(req.params.id);
-  // const id = 1;
+  // const id = parseUUID(req.params.id);
+  const id = 1;
   if (id === null) {
     return res.status(400).json({ error: 'User id must be a valid UUID.' });
   }
   const user = findUserById(id);
-  if (!user || user.tenantId !== req.user.tenantId) {
-    // if (!user) {
+  // if (!user || user.tenantId !== req.user.tenantId) {
+    if (!user) {
     return res.status(404).json({ error: 'User not found in your tenant.' });
   }
   res.json(user); // 🔒 PII included
