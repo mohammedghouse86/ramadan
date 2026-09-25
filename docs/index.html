@@ -317,13 +317,19 @@ function showApp() {
   loadWelcome();
 }
 
-// On login, look up the caller's own display name for the welcome banner.
-// The UI only ever asks for the caller's own username, so from here you only
-// ever see your own tenant's data.
+// On login, find out who the token belongs to (/me), then look that person up
+// by their display name (e.g. "Aisha") for the welcome banner. The UI only
+// ever asks for the caller's own name, so from here you only ever see your own
+// tenant's data.
 async function loadWelcome() {
   const banner = $('welcomeBanner');
   if (!me || !me.user) { banner.classList.add('hidden'); return; }
-  const r = await call('GET', '/admin/users/by-name/' + encodeURIComponent(me.user.name));
+  const self = await call('GET', '/me');
+  if (!self.ok || !self.data || !self.data.displayName) {
+    banner.classList.add('hidden');
+    return;
+  }
+  const r = await call('GET', '/users/by-name/' + encodeURIComponent(self.data.displayName));
   if (r.ok && r.data && r.data.displayName) {
     banner.textContent = 'Welcome back, ' + r.data.displayName + '  ·  ' + r.data.tenant;
     banner.classList.remove('hidden');

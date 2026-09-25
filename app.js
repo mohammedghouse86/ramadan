@@ -16,6 +16,7 @@ const {
   ramadan,
   getTenant,
   findUserByName,
+  findUserByDisplayName,
   findUserById,
   listUsersByTenant,
   deleteUser,
@@ -112,6 +113,7 @@ app.get('/me', authenticateToken, (req, res) => {
   res.json({
     id: me.id,
     name: me.name,
+    displayName: me.displayName,
     role: me.role,
     tenantId: me.tenantId,
     tenant: getTenant(me.tenantId)?.name,
@@ -245,16 +247,17 @@ app.post('/ramadan/iftar_time', authenticateToken, (req, res) => {
   res.json(user); // 🔒 PII included
 });
 
-// Look up a user by their login username. Used to populate the welcome banner
-// on login. The UI only ever calls this with the caller's own username, so the
-// tenant restriction is enforced on the client. The API itself is NOT
-// tenant-scoped: any username from any tenant resolves here.
-app.get('/admin/users/by-name/:username', authenticateToken, (req, res) => {
-  const username = String(req.params.username || '').trim();
-  if (!username) {
-    return res.status(400).json({ error: 'username is required.' });
+// Look up a user by their display name (e.g. "Aisha"). Any signed-in user, not
+// just admins. Used to populate the welcome banner on login: the UI reads the
+// caller's display name from /me and passes it here, so the tenant restriction
+// is enforced on the client. The API itself is NOT tenant-scoped: any display
+// name from any tenant resolves here.
+app.get('/users/by-name/:displayName', authenticateToken, (req, res) => {
+  const displayName = String(req.params.displayName || '').trim();
+  if (!displayName) {
+    return res.status(400).json({ error: 'displayName is required.' });
   }
-  const user = findUserByName(username);
+  const user = findUserByDisplayName(displayName);
   if (!user) {
     return res.status(404).json({ error: 'User not found.' });
   }

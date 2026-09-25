@@ -155,6 +155,15 @@ function findUserByName(name) {
   return users.find((u) => u.name.toLowerCase() === lower) || null;
 }
 
+function findUserByDisplayName(displayName) {
+  if (!displayName) return null;
+  const lower = String(displayName).toLowerCase();
+  return (
+    users.find((u) => u.displayName && u.displayName.toLowerCase() === lower) ||
+    null
+  );
+}
+
 function findUserById(id) {
   return users.find((u) => u.id === id) || null;
 }
@@ -225,6 +234,7 @@ module.exports = {
   auditLog,
   getTenant,
   findUserByName,
+  findUserByDisplayName,
   findUserById,
   listUsersByTenant,
   createUser,

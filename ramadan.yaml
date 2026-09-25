@@ -118,6 +118,48 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
 
+  /users/by-name/{displayName}:
+    parameters:
+      - name: displayName
+        in: path
+        required: true
+        description: The user's display name (case-insensitive).
+        schema: { type: string, example: Aisha }
+    get:
+      tags: [Profile]
+      summary: Look up a user by display name
+      description: >
+        Available to any signed-in user. The web UI calls this right after
+        login with the caller's own display name (read from /me) to show the
+        welcome banner.
+      operationId: getUserByDisplayName
+      responses:
+        '200':
+          description: Basic profile for the matching user (no PII).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string, format: uuid, example: 71affabb-5d93-4c5f-95c3-441f095bfc0c }
+                  name: { type: string, example: admin1 }
+                  displayName: { type: string, example: Aisha }
+                  role: { $ref: '#/components/schemas/Role' }
+                  tenantId: { type: integer, example: 1 }
+                  tenant: { type: string, example: Crescent Org }
+        '400':
+          description: Missing display name.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404':
+          description: No user with that display name.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
   /ramadan:
     get:
       tags: [Ramadan Info]
@@ -636,6 +678,7 @@ components:
       properties:
         id: { type: integer, example: 2 }
         name: { type: string, example: user1 }
+        displayName: { type: string, example: Bilal }
         role: { $ref: '#/components/schemas/Role' }
         tenantId: { type: integer, example: 1 }
         tenant: { type: string, example: Crescent Org }
