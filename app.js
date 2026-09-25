@@ -18,7 +18,6 @@ const {
   findUserByName,
   findUserById,
   listUsersByTenant,
-  createUser,
   deleteUser,
   publicUser,
   addAuditEntry,
@@ -56,12 +55,6 @@ const authLimiter = rateLimit({
 app.use(globalLimiter);
 
 // ===== Helpers =============================================================
-// Validates that an :id route param is a pure integer (no alphanumerics).
-function parseIntegerId(value) {
-  if (!/^\d+$/.test(String(value))) return null;
-  return parseInt(value, 10);
-}
-
 // Validates that an :id route param is a UUID. User ids are UUIDs.
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 function parseUUID(value) {
@@ -76,25 +69,17 @@ function parseUUID(value) {
 // POST /login  { name: "newperson" }         -> auto-creates a user in tenant 1
 // POST /login  { name: "newperson", tenantId: 2 } -> auto-create in tenant 2
 app.post('/login', authLimiter, (req, res) => {
-  const { name, tenantId } = req.body;
+  const { name } = req.body;
 
   if (!name || !String(name).trim()) {
     return res.status(400).json({ error: 'A name is required to log in.' });
   }
 
-  let user = findUserByName(name);
-
-  // Unknown name -> create a regular user on the fly (no password needed).
+  // Only the seeded users can log in. Unknown names are rejected — no accounts
+  // are created on the fly.
+  const user = findUserByName(name);
   if (!user) {
-    let tid = 1;
-    if (tenantId !== undefined) {
-      const parsed = parseIntegerId(tenantId);
-      if (parsed === null || !getTenant(parsed)) {
-        return res.status(400).json({ error: 'Invalid tenantId.' });
-      }
-      tid = parsed;
-    }
-    user = createUser({ name: String(name).trim(), role: 'user', tenantId: tid });
+    return res.status(401).json({ error: 'Unknown user.' });
   }
 
   const token = jwt.sign(
@@ -260,28 +245,27 @@ app.post('/ramadan/iftar_time', authenticateToken, (req, res) => {
   res.json(user); // 🔒 PII included
 });
 
-// Create a user in your tenant (with optional PII). Integer id auto-assigned.
-app.post('/admin/users', authenticateToken, requireAdmin, (req, res) => {
-  const { name, role, pii } = req.body;
-  if (!name || !String(name).trim()) {
-    return res.status(400).json({ error: 'name is required.' });
+// Look up a user by their login username. Used to populate the welcome banner
+// on login. The UI only ever calls this with the caller's own username, so the
+// tenant restriction is enforced on the client. The API itself is NOT
+// tenant-scoped: any username from any tenant resolves here.
+app.get('/admin/users/by-name/:username', authenticateToken, (req, res) => {
+  const username = String(req.params.username || '').trim();
+  if (!username) {
+    return res.status(400).json({ error: 'username is required.' });
   }
-  if (findUserByName(name)) {
-    return res.status(409).json({ error: 'A user with that name already exists.' });
+  const user = findUserByName(username);
+  if (!user) {
+    return res.status(404).json({ error: 'User not found.' });
   }
-  const user = createUser({
-    name: String(name).trim(),
-    role: role === 'admin' ? 'admin' : 'user',
-    tenantId: req.user.tenantId,
-    pii: pii || {},
+  res.json({
+    id: user.id,
+    name: user.name,
+    displayName: user.displayName,
+    role: user.role,
+    tenantId: user.tenantId,
+    tenant: getTenant(user.tenantId)?.name,
   });
-  addAuditEntry({
-    tenantId: req.user.tenantId,
-    actorId: req.user.id,
-    actorName: req.user.name,
-    action: `create_user:${user.id}`,
-  });
-  res.status(201).json(user);
 });
 
 // Delete a user in your tenant by integer id.

@@ -127,6 +127,8 @@
       </div>
     </header>
 
+    <div id="welcomeBanner" class="panel hidden" style="border-left:4px solid #2f9e77"></div>
+
     <nav class="tabs" id="tabs">
       <button data-tab="info" aria-selected="true">Ramadan info</button>
       <button data-tab="tools" aria-selected="false">Tools</button>
@@ -203,17 +205,6 @@
         <button id="deleteUserBtn" class="danger">Delete</button>
       </div>
       <p class="note">Selecting a name calls <code>/admin/users/&lt;uuid&gt;</code>. You cannot delete your own account.</p>
-    </div>
-    <div class="panel tabpane hidden" data-pane="admin">
-      <h2>Create user</h2>
-      <div class="fields">
-        <div><label for="cName">Name</label><input id="cName" placeholder="newperson"></div>
-        <div><label for="cRole">Role</label><input id="cRole" value="user" placeholder="user or admin"></div>
-        <div><label for="cFullName">Full name</label><input id="cFullName" placeholder="optional"></div>
-        <div><label for="cEmail">Email</label><input id="cEmail" placeholder="optional"></div>
-        <div><label for="cPhone">Phone</label><input id="cPhone" placeholder="optional"></div>
-      </div>
-      <button id="createBtn" class="primary">Create</button>
     </div>
 
     <!-- output -->
@@ -323,6 +314,22 @@ function showApp() {
   $('whoRole').textContent = me.user.role;
   $('whoTenant').textContent = me.tenant + ' - tenant ' + me.user.tenantId + ' - id ' + me.user.id;
   applyAdminVisibility();
+  loadWelcome();
+}
+
+// On login, look up the caller's own display name for the welcome banner.
+// The UI only ever asks for the caller's own username, so from here you only
+// ever see your own tenant's data.
+async function loadWelcome() {
+  const banner = $('welcomeBanner');
+  if (!me || !me.user) { banner.classList.add('hidden'); return; }
+  const r = await call('GET', '/admin/users/by-name/' + encodeURIComponent(me.user.name));
+  if (r.ok && r.data && r.data.displayName) {
+    banner.textContent = 'Welcome back, ' + r.data.displayName + '  ·  ' + r.data.tenant;
+    banner.classList.remove('hidden');
+  } else {
+    banner.classList.add('hidden');
+  }
 }
 
 function logout(message) {
@@ -332,6 +339,7 @@ function logout(message) {
   localStorage.removeItem('ramadan_user');
   $('app').classList.add('hidden');
   $('login').classList.remove('hidden');
+  $('welcomeBanner').classList.add('hidden');
   applyAdminVisibility();
   const box = $('loginErr');
   if (message) { box.textContent = message; box.classList.remove('hidden'); }
@@ -449,33 +457,6 @@ $('deleteUserBtn').addEventListener('click', async (e) => {
   const r = await run('DELETE', '/admin/users/' + encodeURIComponent(id), undefined, e.currentTarget);
   if (r && r.ok) loadUsers();
 });
-
-$('createBtn').addEventListener('click', async (e) => {
-  const name = $('cName').value.trim();
-  if (!name) {
-    $('outPath').textContent = 'POST /admin/users';
-    $('outBody').textContent = 'name is required.';
-    return;
-  }
-
-  const pii = {};
-  if ($('cFullName').value.trim()) pii.fullName = $('cFullName').value.trim();
-  if ($('cEmail').value.trim()) pii.email = $('cEmail').value.trim();
-  if ($('cPhone').value.trim()) pii.phone = $('cPhone').value.trim();
-
-  const body = { name, role: $('cRole').value.trim() || 'user' };
-  if (Object.keys(pii).length) body.pii = pii;
-
-  const r = await run('POST', '/admin/users', body, e.currentTarget);
-  if (r.ok) {
-    $('cName').value = '';
-    $('cFullName').value = '';
-    $('cEmail').value = '';
-    $('cPhone').value = '';
-    loadUsers();
-  }
-});
-
 
 // ===== boot ===============================================================
 if (token && me && me.user) showApp();

@@ -76,6 +76,7 @@ const users = [
   {
     id: "71affabb-5d93-4c5f-95c3-441f095bfc0c",
     name: "admin1",
+    displayName: "Aisha",
     role: "admin",
     tenantId: 1,
     pii: {
@@ -90,6 +91,7 @@ const users = [
   {
     id: "9e5fa2c1-5f04-47f1-9fec-49447493dc00",
     name: "user1",
+    displayName: "Bilal",
     role: "user",
     tenantId: 1,
     pii: {
@@ -104,6 +106,7 @@ const users = [
   {
     id: "f0752d6b-50e9-4317-acf6-138928c8ea58",
     name: "admin2",
+    displayName: "Fatima",
     role: "admin",
     tenantId: 2,
     pii: {
@@ -113,6 +116,21 @@ const users = [
       address: "5 Gulberg III, Lahore, Pakistan",
       dateOfBirth: "1989-12-21",
       nationalId: "35202-1234567-8",
+    },
+  },
+  {
+    id: "b3d9c1e4-7a26-4f8b-9c05-2e6d84f1a730",
+    name: "user2",
+    displayName: "Yusuf",
+    role: "user",
+    tenantId: 2,
+    pii: {
+      fullName: "Yusuf Malik",
+      email: "yusuf.malik@hilal.example.com",
+      phone: "+92-321-555-3344",
+      address: "27 Clifton Block 5, Karachi, Pakistan",
+      dateOfBirth: "1996-06-18",
+      nationalId: "42101-7654321-9",
     },
   },
 ];
